@@ -18,6 +18,9 @@ tasks: list[Task] = []
 def create_task(tarefa: Task):
     if any(existing_task.nome == tarefa.nome for existing_task in tasks):
         return HTMLResponse(content="Tarefa já existe!", status_code=400)
+    
+    if not tarefa.nome or not tarefa.descricao:
+        return HTMLResponse(content="Nome e descrição são obrigatórios!", status_code=400)
 
     tasks.append(tarefa)
 
