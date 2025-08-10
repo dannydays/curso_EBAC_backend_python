@@ -1,3 +1,4 @@
+.env
 fastapi_tarefas/venv/
 fastapi_tarefas/__pycache__/
 api_livros_ebac_python/venv/

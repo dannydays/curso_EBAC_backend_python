@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import HTMLResponse
-import json
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
 from typing import Optional
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 class Task(BaseModel):
     nome: str
@@ -11,11 +14,27 @@ class Task(BaseModel):
 
 app = FastAPI()
 
+username = os.getenv("USER")
+password = os.getenv("PASS")
+
+security = HTTPBasic()
+
+def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == username and credentials.password == password:
+        return True
+    else:
+        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
+
 tasks: list[Task] = []
+
+# Rota para ler todas as tarefas
+@app.get("/tasks/")
+def get_tasks(credentials: HTTPBasicCredentials = Depends(authenticate)):
+    return tasks
 
 # Rota para criar uma nova tarefa
 @app.post("/tasks/")
-def create_task(tarefa: Task):
+def create_task(tarefa: Task, credentials: HTTPBasicCredentials = Depends(authenticate)):
     if any(existing_task.nome == tarefa.nome for existing_task in tasks):
         return HTMLResponse(content="Tarefa já existe!", status_code=400)
     
@@ -26,14 +45,9 @@ def create_task(tarefa: Task):
 
     return HTMLResponse(content=f"Tarefa '{tarefa.nome}' criada com sucesso!", status_code=201)
 
-# Rota para ler todas as tarefas
-@app.get("/tasks/")
-def get_tasks(): 
-    return tasks
-
 # Rota para marcar uma tarefa como concluída
 @app.put("/tasks/check/{nome}")
-def check_task(nome: str):
+def check_task(nome: str, credentials: HTTPBasicCredentials = Depends(authenticate)):
     found_task = None
     for task in tasks:
         if task.nome == nome:
@@ -49,7 +63,7 @@ def check_task(nome: str):
 
 # Rota para deletar uma tarefa
 @app.delete("/tasks/{nome}")
-def delete_task(nome: str):
+def delete_task(nome: str, credentials: HTTPBasicCredentials = Depends(authenticate)):
     global tasks
     initial_tasks_count = len(tasks)
     tasks = [task for task in tasks if task.nome != nome]
