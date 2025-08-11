@@ -29,8 +29,22 @@ tasks: list[Task] = []
 
 # Rota para ler todas as tarefas
 @app.get("/tasks/")
-def get_tasks(credentials: HTTPBasicCredentials = Depends(authenticate)):
-    return tasks
+def get_tasks(page: int = 1, limit:int = 3, credentials: HTTPBasicCredentials = Depends(authenticate)):
+    if page < 1 or limit < 1:
+        raise HTTPException(status_code=400, detail="Parâmetros inválidos: 'page' e 'limit' devem ser maiores que 0")
+    
+    if not tasks:
+        return HTMLResponse(content="Nenhuma tarefa encontrada!", status_code=404)
+    
+    start = (page - 1) * limit
+    end = start + limit
+
+    paginated_tasks = [
+        {"nome": task.nome, "descricao": task.descricao, "concluida": task.concluida}
+        for task in tasks[start:end]
+    ]
+
+    return {"page": page, "limit": limit, "tasks": paginated_tasks}
 
 # Rota para criar uma nova tarefa
 @app.post("/tasks/")
