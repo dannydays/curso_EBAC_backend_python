@@ -38,7 +38,7 @@ def get_tasks(page: int = 1, limit:int = 3, sort_by: str = "nome", credentials: 
     
     allowed_sort_fields = ["nome", "descricao", "concluida"]
     if sort_by not in allowed_sort_fields:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Campo de ordenação inválido. Use um dos seguintes: {', '.join(alowed_sort_fields)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Campo de ordenação inválido. Use um dos seguintes: {', '.join(allowed_sort_fields)}")
     
     sorted_tasks = sorted(tasks, key=lambda x: getattr(x, sort_by))
 
