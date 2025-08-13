@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from pydantic import BaseModel
@@ -23,7 +23,7 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == username and credentials.password == password:
         return True
     else:
-        raise HTTPException(status_code=401, detail="Usuário ou senha inválidos")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário ou senha inválidos", headers={"WWW-Authenticate": "Basic"})
 
 tasks: list[Task] = []
 
@@ -31,14 +31,14 @@ tasks: list[Task] = []
 @app.get("/tasks/")
 def get_tasks(page: int = 1, limit:int = 3, sort_by: str = "nome", credentials: HTTPBasicCredentials = Depends(authenticate)):
     if page < 1 or limit < 1:
-        raise HTTPException(status_code=400, detail="Parâmetros inválidos: 'page' e 'limit' devem ser maiores que 0")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Parâmetros inválidos: 'page' e 'limit' devem ser maiores que 0")
     
     if not tasks:
-        return HTMLResponse(content="Nenhuma tarefa encontrada!", status_code=404)
+        return {"tasks": []}
     
-    alowed_sort_fields = ["nome", "descricao", "concluida"]
-    if sort_by not in alowed_sort_fields:
-        raise HTTPException(status_code=400, detail=f"Campo de ordenação inválido. Use um dos seguintes: {', '.join(alowed_sort_fields)}")
+    allowed_sort_fields = ["nome", "descricao", "concluida"]
+    if sort_by not in allowed_sort_fields:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Campo de ordenação inválido. Use um dos seguintes: {', '.join(alowed_sort_fields)}")
     
     sorted_tasks = sorted(tasks, key=lambda x: getattr(x, sort_by))
 
@@ -56,14 +56,14 @@ def get_tasks(page: int = 1, limit:int = 3, sort_by: str = "nome", credentials: 
 @app.post("/tasks/")
 def create_task(tarefa: Task, credentials: HTTPBasicCredentials = Depends(authenticate)):
     if any(existing_task.nome == tarefa.nome for existing_task in tasks):
-        return HTMLResponse(content="Tarefa já existe!", status_code=400)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Tarefa já existe!")
     
     if not tarefa.nome or not tarefa.descricao:
-        return HTMLResponse(content="Nome e descrição são obrigatórios!", status_code=400)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nome e descrição são obrigatórios!")
 
     tasks.append(tarefa)
 
-    return HTMLResponse(content=f"Tarefa '{tarefa.nome}' criada com sucesso!", status_code=201)
+    return {"message": f"Tarefa '{tarefa.nome}' criada com sucesso!"}
 
 # Rota para marcar uma tarefa como concluída
 @app.put("/tasks/check/{nome}")
@@ -75,11 +75,11 @@ def check_task(nome: str, credentials: HTTPBasicCredentials = Depends(authentica
             break
 
     if not found_task:
-        return HTMLResponse(content="Tarefa não encontrada!", status_code=404)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada!")
 
     found_task.concluida = True
     
-    return HTMLResponse(content=f"Tarefa '{nome}' marcada como concluída!", status_code=200)
+    return {"message": f"Tarefa '{nome}' marcada como concluída!"}
 
 # Rota para deletar uma tarefa
 @app.delete("/tasks/{nome}")
@@ -89,6 +89,6 @@ def delete_task(nome: str, credentials: HTTPBasicCredentials = Depends(authentic
     tasks = [task for task in tasks if task.nome != nome]
 
     if len(tasks) == initial_tasks_count:
-        return HTMLResponse(content="Tarefa não encontrada!", status_code=404)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tarefa não encontrada!")
     
-    return HTMLResponse(content=f"Tarefa '{nome}' deletada com sucesso!", status_code=200)
+    return {"message": f"Tarefa '{nome}' deletada com sucesso!"}
