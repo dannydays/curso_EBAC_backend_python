@@ -3,3 +3,4 @@ fastapi_tarefas/venv/
 fastapi_tarefas/__pycache__/
 api_livros_ebac_python/venv/
 api_livros_ebac_python/__pycache__/
+*.db
