@@ -59,6 +59,17 @@ def get_db():
     finally:
         db.close()
 
+def get_task_or_404(nome: str, db: Session = Depends(get_db)) -> TaskDB:
+    """
+    Busca uma tarefa no banco de dados pelo nome.
+    Se não encontrar, levanta uma exceção HTTP 404.
+    """
+    task_db = db.query(TaskDB).filter(TaskDB.nome == nome).first()
+    if not task_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Tarefa não encontrada!")
+    return task_db
+
 app = FastAPI()
 
 username = os.getenv("USER")
@@ -121,25 +132,16 @@ def create_task(tarefa: TaskPost, db: Session = Depends(get_db), credentials: HT
 
 # Rota para marcar uma tarefa como concluída
 @app.put("/tasks/check/{nome}", status_code=status.HTTP_200_OK)
-def check_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
-    task_db = db.query(TaskDB).filter(TaskDB.nome == nome).first()
-    if not task_db:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tarefa não encontrada!")
-    
+def check_task(task_db: TaskDB = Depends(get_task_or_404), db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     task_db.concluida = True
     db.commit()
     db.refresh(task_db)
     
-    return {"message": f"Tarefa '{nome}' marcada como concluída!"}
+    return {"message": f"Tarefa '{task_db.nome}' marcada como concluída!"}
 
 # Rota para deletar uma tarefa
 @app.delete("/tasks/{nome}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
-    task_db = db.query(TaskDB).filter(TaskDB.nome == nome).first()
-    if not task_db:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="Tarefa não encontrada!")
+def delete_task(task_db: TaskDB = Depends(get_task_or_404), db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     db.delete(task_db)
     db.commit()
     
