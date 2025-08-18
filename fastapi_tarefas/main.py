@@ -77,7 +77,7 @@ def authenticate(credentials: HTTPBasicCredentials = Depends(security)):
                             headers={"WWW-Authenticate": "Basic"})
 
 # Rota para ler todas as tarefas
-@app.get("/tasks/", response_model=PaginatedTasksResponse)
+@app.get("/tasks/", response_model=PaginatedTasksResponse, status_code=status.HTTP_200_OK)
 def get_tasks(page: int = 1, limit:int = 3, sort_by: str = "id", db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     if page < 1 or limit < 1:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -101,7 +101,7 @@ def get_tasks(page: int = 1, limit:int = 3, sort_by: str = "id", db: Session = D
     return {"page": page, "limit": limit, "total_items": total_items, "tasks": tasks}
 
 # Rota para criar uma nova tarefa
-@app.post("/tasks/")
+@app.post("/tasks/", status_code=status.HTTP_201_CREATED)
 def create_task(tarefa: TaskPost, db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     existing_task = db.query(TaskDB).filter(TaskDB.nome == tarefa.nome).first()
     if existing_task:
@@ -120,7 +120,7 @@ def create_task(tarefa: TaskPost, db: Session = Depends(get_db), credentials: HT
     return {"message": f"Tarefa '{tarefa.nome}' criada com sucesso!"}
 
 # Rota para marcar uma tarefa como concluída
-@app.put("/tasks/check/{nome}")
+@app.put("/tasks/check/{nome}", status_code=status.HTTP_200_OK)
 def check_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     task_db = db.query(TaskDB).filter(TaskDB.nome == nome).first()
     if not task_db:
@@ -134,7 +134,7 @@ def check_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasicC
     return {"message": f"Tarefa '{nome}' marcada como concluída!"}
 
 # Rota para deletar uma tarefa
-@app.delete("/tasks/{nome}")
+@app.delete("/tasks/{nome}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasicCredentials = Depends(authenticate)):
     task_db = db.query(TaskDB).filter(TaskDB.nome == nome).first()
     if not task_db:
@@ -143,4 +143,4 @@ def delete_task(nome: str, db: Session = Depends(get_db), credentials: HTTPBasic
     db.delete(task_db)
     db.commit()
     
-    return {"message": f"Tarefa '{nome}' deletada com sucesso!"}
+    return None
